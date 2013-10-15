@@ -214,9 +214,9 @@ func PrintbTree(btree *bTree) string {
 
 	dotOutput := ""
 
-	dotOutput += ("graph btree {\nNode0 [label=\"")
+	dotOutput += ("graph btree {\nrankdir = BT;\nedge[dir=back];\nNode0 [label=\"")
 	for _, el := range btree.root.elements {
-		dotOutput += fmt.Sprintf("%d\t", el)
+		dotOutput += fmt.Sprintf("%d  ", el)
 	}
 	dotOutput += ("\"]\n")
 	printbTreeNodes(btree.root, ch, <-ch, &dotOutput)
@@ -231,7 +231,7 @@ func printbTreeNodes(active *bTreeNode, ch chan int, parentNodeNum int, dotOutpu
 		nodeNum := <-ch
 		*dotOutput += fmt.Sprintf("Node%d [shape=box label=\"", nodeNum)
 		for _, el := range child.elements {
-			*dotOutput += fmt.Sprintf("%d\t", el)
+			*dotOutput += fmt.Sprintf("   %d", el)
 		}
 		*dotOutput += fmt.Sprintf("\"]\n")
 		printbTreeNodes(child, ch, nodeNum, dotOutput)
