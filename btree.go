@@ -8,6 +8,9 @@ package main
 
 import (
 	"fmt"
+	"io"
+	"net/http"
+	"html/template"
 )
 
 type bTree struct {
@@ -202,31 +205,36 @@ func counter(ch, quit chan int) {
 	}
 }
 
-func PrintbTree(btree *bTree) {
+func PrintbTree(btree *bTree) string {
 	ch := make(chan int)
 	quit := make(chan int)
 	go counter(ch, quit)
 
-	fmt.Printf("graph btree {\nNode0 [label=\"")
-	fmt.Print(btree.root.elements)
-	fmt.Println("\"]")
-	printbTreeNodes(btree.root, ch, <-ch)
-	fmt.Print("}\n")
+	dotOutput := ""
+
+	dotOutput += ("graph btree {\nNode0 [label=\"")
+	for _, el := range btree.root.elements {
+		dotOutput += fmt.Sprintf("%d\t", el)
+	}
+	dotOutput += ("\"]\n")
+	printbTreeNodes(btree.root, ch, <-ch, &dotOutput)
+	dotOutput += ("}\n")
 	quit <- 1
+
+	return dotOutput
 }
 
 /* IIUC this won't work for trees of height more than 3 levels */
-func printbTreeNodes(active *bTreeNode, ch chan int, parentNodeNum int) {
+func printbTreeNodes(active *bTreeNode, ch chan int, parentNodeNum int, dotOutput *string) {
 	for _, child := range active.children {
 		nodeNum := <-ch
-		fmt.Printf("Node%d [shape=box label=\"", nodeNum)
+		*dotOutput += fmt.Sprintf("Node%d [shape=box label=\"", nodeNum)
 		for _, el := range child.elements {
-			fmt.Print(el)
-			fmt.Print("\t")
+			*dotOutput += fmt.Sprintf("%d\t", el)
 		}
-		fmt.Printf("\"]\n")
-		printbTreeNodes(child, ch, nodeNum)
-		fmt.Printf("Node%d -- Node%d [color=blue]\n", nodeNum, parentNodeNum)
+		*dotOutput += fmt.Sprintf("\"]\n")
+		printbTreeNodes(child, ch, nodeNum, dotOutput)
+		*dotOutput += fmt.Sprintf("Node%d -- Node%d [color=blue]\n", nodeNum, parentNodeNum)
 	}
 }
 
@@ -240,6 +248,13 @@ func Delete(btree *bTree, x int) *bTree {
 }
 
 func main() {
+	http.HandleFunc("/", treeOperations)
+	http.Handle("/resources/", http.StripPrefix("/resources/", http.FileServer(http.Dir("resources"))))
+	http.ListenAndServe(":8080", nil)
+}
+
+func treeOperations(w http.ResponseWriter, r *http.Request) {
+
 	var btree *bTree = nil
 
 	btree, _ = InitializebTree(3)
@@ -253,8 +268,18 @@ func main() {
 	}
 
 	fmt.Println("Elements in the tree:")
-	PrintbTree(btree)
 
+	type treeRenderer struct {
+		DotOutput string
+	}
+	dotOutput := PrintbTree(btree)
+
+	err := template.Must(template.ParseFiles("treedisplay.html")).Execute(w, &treeRenderer{dotOutput})
+	if err != nil {
+		fmt.Println("God help me")
+		io.WriteString(w, fmt.Sprintf("Error generating HTML file from the template:\n%s", err))
+		return
+	}
 	/*
 
 		for _, i := range []int{1, 14, 3} {
