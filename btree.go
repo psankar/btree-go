@@ -101,9 +101,18 @@ b:
 	if len(active.elements) > 2*btree.order {
 
 		rightNode := &bTreeNode{}
-		rightNode.elements = make([]int, btree.order)
-		rightNode.children = make([]*bTreeNode, 0, 2*btree.order+1)
-		copy(rightNode.elements, active.elements[btree.order+1:])
+
+		for _, el := range active.elements[btree.order+1:] {
+			rightNode.elements = append(rightNode.elements, el)
+		}
+
+		if len(active.children) > btree.order+1 {
+			for _, child := range active.children[btree.order+1:] {
+				child.parent = rightNode
+				rightNode.children = append(rightNode.children, child)
+			}
+			active.children = active.children[:btree.order+1]
+		}
 
 		if active.parent == nil {
 			fmt.Println("Overflow in the btree root node. Should split the node")
@@ -175,26 +184,49 @@ b:
 
 	} else {
 		fmt.Print("Inserted now the new array is ")
-		fmt.Println(active.elements)
+		PrintbTree(btree)
 	}
 
 	return btree
 }
 
+func counter(ch, quit chan int) {
+	counter := 0
+	for {
+		select {
+		case ch <- counter:
+			counter++
+		case _ = <-quit:
+			return
+		}
+	}
+}
+
 func PrintbTree(btree *bTree) {
-	fmt.Println(btree.root.elements)
-	printbTreeNodes(btree.root, 1)
+	ch := make(chan int)
+	quit := make(chan int)
+	go counter(ch, quit)
+
+	fmt.Printf("graph btree {\nNode0 [label=\"")
+	fmt.Print(btree.root.elements)
+	fmt.Println("\"]")
+	printbTreeNodes(btree.root, ch, <-ch)
+	fmt.Print("}\n")
+	quit <- 1
 }
 
 /* IIUC this won't work for trees of height more than 3 levels */
-func printbTreeNodes(active *bTreeNode, level int) {
+func printbTreeNodes(active *bTreeNode, ch chan int, parentNodeNum int) {
 	for _, child := range active.children {
-		fmt.Print(child.elements)
-		fmt.Print(" ")
-	}
-	fmt.Println()
-	for _, child := range active.children {
-		printbTreeNodes(child, level+1)
+		nodeNum := <-ch
+		fmt.Printf("Node%d [shape=box label=\"", nodeNum)
+		for _, el := range child.elements {
+			fmt.Print(el)
+			fmt.Print("\t")
+		}
+		fmt.Printf("\"]\n")
+		printbTreeNodes(child, ch, nodeNum)
+		fmt.Printf("Node%d -- Node%d [color=blue]\n", nodeNum, parentNodeNum)
 	}
 }
 
