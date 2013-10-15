@@ -125,7 +125,7 @@ b:
 
 			btree.root = newRootNode
 
-			printbTreeNodes(newRootNode)
+			PrintbTree(btree)
 			return btree
 		} else {
 			var pos, val int
@@ -169,7 +169,7 @@ b:
 			}
 			rightNode.parent = parent
 			active = parent
-			printbTreeNodes(btree.root)
+			PrintbTree(btree)
 			goto b
 		}
 
@@ -182,19 +182,19 @@ b:
 }
 
 func PrintbTree(btree *bTree) {
-	printbTreeNodes(btree.root)
+	fmt.Println(btree.root.elements)
+	printbTreeNodes(btree.root, 1)
 }
 
-func printbTreeNodes(active *bTreeNode) {
-
-	fmt.Println("--------------")
-
-	for _, i := range active.elements {
-		fmt.Println(i)
-	}
-
+/* IIUC this won't work for trees of height more than 3 levels */
+func printbTreeNodes(active *bTreeNode, level int) {
 	for _, child := range active.children {
-		printbTreeNodes(child)
+		fmt.Print(child.elements)
+		fmt.Print(" ")
+	}
+	fmt.Println()
+	for _, child := range active.children {
+		printbTreeNodes(child, level+1)
 	}
 }
 
