@@ -1,6 +1,8 @@
 /*
  * A thread unsafe btree that works only on integers
  *
+ * After running the program, visit: http://127.0.0.1:8080/
+ *
  * Author:	Sankar <sankar.curiosity@gmail.com>
  * License:	Creative Commons Zero License
  */
@@ -8,9 +10,9 @@ package main
 
 import (
 	"fmt"
+	"html/template"
 	"io"
 	"net/http"
-	"html/template"
 )
 
 type bTree struct {
@@ -224,7 +226,6 @@ func PrintbTree(btree *bTree) string {
 	return dotOutput
 }
 
-/* IIUC this won't work for trees of height more than 3 levels */
 func printbTreeNodes(active *bTreeNode, ch chan int, parentNodeNum int, dotOutput *string) {
 	for _, child := range active.children {
 		nodeNum := <-ch
@@ -259,7 +260,6 @@ func treeOperations(w http.ResponseWriter, r *http.Request) {
 
 	btree, _ = InitializebTree(3)
 
-	//a := []int{8, 3, 10, 1, 6, 9, 4, 7, 13, 18, 15}
 	a := []int{6, 1, 3, 10, 4, 7, 8, 9, 18, 12, 13, 19, 15, 22, 33, 35, 44, 70, 37, 38, 39, 50, 60, 55, 80, 90, 101, 102, 100, 110, 120}
 
 	for _, i := range a {
@@ -276,7 +276,6 @@ func treeOperations(w http.ResponseWriter, r *http.Request) {
 
 	err := template.Must(template.ParseFiles("treedisplay.html")).Execute(w, &treeRenderer{dotOutput})
 	if err != nil {
-		fmt.Println("God help me")
 		io.WriteString(w, fmt.Sprintf("Error generating HTML file from the template:\n%s", err))
 		return
 	}
