@@ -13,6 +13,7 @@ import (
 	"html/template"
 	"io"
 	"net/http"
+	"strconv"
 )
 
 type bTree struct {
@@ -139,7 +140,7 @@ b:
 
 			btree.root = newRootNode
 
-			PrintbTree(btree)
+			//PrintbTree(btree)
 			return btree
 		} else {
 			var pos, val int
@@ -183,13 +184,13 @@ b:
 			}
 			rightNode.parent = parent
 			active = parent
-			PrintbTree(btree)
+			//PrintbTree(btree)
 			goto b
 		}
 
 	} else {
-		fmt.Print("Inserted now the new array is ")
-		PrintbTree(btree)
+		//fmt.Print("Inserted now the new array is ")
+		//PrintbTree(btree)
 	}
 
 	return btree
@@ -248,53 +249,78 @@ func Delete(btree *bTree, x int) *bTree {
 	return btree
 }
 
+var btree *bTree = nil
+
 func main() {
 	http.HandleFunc("/", treeOperations)
 	http.Handle("/resources/", http.StripPrefix("/resources/", http.FileServer(http.Dir("resources"))))
 	http.ListenAndServe(":8080", nil)
 }
 
+type treeRenderer struct {
+	DotOutput string
+}
+
 func treeOperations(w http.ResponseWriter, r *http.Request) {
 
-	var btree *bTree = nil
+	if r.Method == "POST" {
+		err := r.ParseForm()
+		if err != nil {
+			io.WriteString(w, fmt.Sprintf("Error parsing the submitted form:\n%s", err))
+		}
 
-	btree, _ = InitializebTree(3)
+		var v int
+		v, err = strconv.Atoi(r.Form["number"][0])
+		if err != nil {
+			io.WriteString(w, fmt.Sprintf("Error parsing the given number:\n%s", err))
+		}
+		fmt.Printf("Inserting [%d]\n", v)
+		btree = Insert(btree, v)
 
-	a := []int{6, 1, 3, 10, 4, 7, 8, 9, 18, 12, 13, 19, 15, 22, 33, 35, 44, 70, 37, 38, 39, 50, 60, 55, 80, 90, 101, 102, 100, 110, 120}
+		/*
+			a := []int{6, 1, 3, 10, 4, 7, 8, 9, 18, 12, 13, 19, 15, 22, 33, 35, 44, 70, 37, 38, 39, 50, 60, 55, 80, 90, 101, 102, 100, 110, 120}
 
-	for _, i := range a {
-		Insert(btree, i)
-		fmt.Println()
-	}
-
-	fmt.Println("Elements in the tree:")
-
-	type treeRenderer struct {
-		DotOutput string
-	}
-	dotOutput := PrintbTree(btree)
-
-	err := template.Must(template.ParseFiles("treedisplay.html")).Execute(w, &treeRenderer{dotOutput})
-	if err != nil {
-		io.WriteString(w, fmt.Sprintf("Error generating HTML file from the template:\n%s", err))
-		return
-	}
-	/*
-
-		for _, i := range []int{1, 14, 3} {
-			if Find(btree, i) != nil {
-				fmt.Printf("Found %d in the Tree\n", i)
-			} else {
-				fmt.Printf("%d is not found in the tree\n", i)
+			for _, i := range a {
+				Insert(btree, i)
+				fmt.Println()
 			}
+		*/
+
+		dotOutput := PrintbTree(btree)
+
+		err = template.Must(template.ParseFiles("treedisplay.html")).Execute(w, &treeRenderer{dotOutput})
+		if err != nil {
+			io.WriteString(w, fmt.Sprintf("Error generating HTML file from the template:\n%s", err))
+			return
 		}
+		/*
 
-		for _, i := range []int{14, 3} {
-			btree = Delete(btree, i)
-			fmt.Printf("Deleted %d\n", i)
+			for _, i := range []int{1, 14, 3} {
+				if Find(btree, i) != nil {
+					fmt.Printf("Found %d in the Tree\n", i)
+				} else {
+					fmt.Printf("%d is not found in the tree\n", i)
+				}
+			}
+
+			for _, i := range []int{14, 3} {
+				btree = Delete(btree, i)
+				fmt.Printf("Deleted %d\n", i)
+			}
+			PrintbTree(btree)
+
+
+		*/
+	} else {
+		if btree == nil {
+			btree, _ = InitializebTree(3)
+			err :=
+				template.Must(template.ParseFiles("treedisplay.html")).Execute(w, &treeRenderer{""})
+			if err != nil {
+				io.WriteString(w, fmt.Sprintf("Error generating HTML file from the template:\n%s", err))
+				return
+			}
+			fmt.Println("Initializing the btree")
 		}
-		PrintbTree(btree)
-
-
-	*/
+	}
 }
