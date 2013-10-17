@@ -278,8 +278,21 @@ func treeOperations(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			io.WriteString(w, fmt.Sprintf("Error parsing the given number:\n%s", err))
 		}
-		fmt.Printf("Inserting [%d]\n", v)
-		btree = Insert(btree, v)
+
+		if r.Form["insert"] != nil {
+
+			fmt.Printf("\nInserting [%d]\n", v)
+			btree = Insert(btree, v)
+
+		} else if r.Form["delete"] != nil {
+
+			fmt.Printf("\nDeleting [%d]\n", v)
+
+		} else {
+			io.WriteString(w, "Neither an insert request, nor a delete request")
+			return
+		}
+
 		dotOutput := PrintbTree(btree)
 
 		err = template.Must(template.ParseFiles("treedisplay.html")).Execute(w, &treeRenderer{dotOutput})
