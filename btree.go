@@ -3,6 +3,10 @@
  *
  * After running the program, visit: http://127.0.0.1:8080/
  *
+ * If you want to make this thread-safe and use as a library all you need is to
+ * add a lock and lock it in every exported call. Since I developed the program
+ * mainly for teaching, I can live with the thread unsafeness
+ *
  * Author:	Sankar <sankar.curiosity@gmail.com>
  * License:	Creative Commons Zero License
  */
@@ -276,16 +280,6 @@ func treeOperations(w http.ResponseWriter, r *http.Request) {
 		}
 		fmt.Printf("Inserting [%d]\n", v)
 		btree = Insert(btree, v)
-
-		/*
-			a := []int{6, 1, 3, 10, 4, 7, 8, 9, 18, 12, 13, 19, 15, 22, 33, 35, 44, 70, 37, 38, 39, 50, 60, 55, 80, 90, 101, 102, 100, 110, 120}
-
-			for _, i := range a {
-				Insert(btree, i)
-				fmt.Println()
-			}
-		*/
-
 		dotOutput := PrintbTree(btree)
 
 		err = template.Must(template.ParseFiles("treedisplay.html")).Execute(w, &treeRenderer{dotOutput})
@@ -293,25 +287,10 @@ func treeOperations(w http.ResponseWriter, r *http.Request) {
 			io.WriteString(w, fmt.Sprintf("Error generating HTML file from the template:\n%s", err))
 			return
 		}
-		/*
-
-			for _, i := range []int{1, 14, 3} {
-				if Find(btree, i) != nil {
-					fmt.Printf("Found %d in the Tree\n", i)
-				} else {
-					fmt.Printf("%d is not found in the tree\n", i)
-				}
-			}
-
-			for _, i := range []int{14, 3} {
-				btree = Delete(btree, i)
-				fmt.Printf("Deleted %d\n", i)
-			}
-			PrintbTree(btree)
-
-
-		*/
 	} else {
+		/* The next if loop is a hack to avoid re-initialization due to
+		 * the GET request that will come when the page gets rendered
+		 * during the response of the POST (the above block) */
 		if btree == nil {
 			btree, _ = InitializebTree(3)
 			err :=
