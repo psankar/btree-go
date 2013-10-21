@@ -249,7 +249,152 @@ func Find(btree *bTree, x int) *bTree {
 	return btree
 }
 
+func findPositionInParentNode(active *bTreeNode) int {
+	if active.parent == nil {
+		return -1
+	}
+
+	for childNumber, child := range active.parent.children {
+		if child == active {
+			return childNumber
+		}
+	}
+
+	return -1
+}
+
 func Delete(btree *bTree, x int) *bTree {
+	active := btree.root
+
+	var i, val int
+	found := false
+
+a:
+	for i, val = range active.elements {
+		fmt.Printf("Comparing %d against %d\n", x, val)
+		if val == x {
+			found = true
+			fmt.Printf("Found [%d] in the btree at position [%d]\n", x, i)
+			break
+		} else if val > x {
+			if len(active.children) > i {
+				active = active.children[i]
+				goto a
+			} else {
+				break
+			}
+		}
+	}
+
+	/* Check if there is a subtree on the right of the last element */
+	if !found && len(active.children) == len(active.elements)+1 {
+		active = active.children[len(active.elements)]
+		goto a
+	}
+
+	if found {
+
+		var childNumber int
+
+		childNumber = findPositionInParentNode(active)
+
+		fmt.Println("Length of the children of the found node is: ", len(active.children))
+		if len(active.children) == 0 {
+			/* The element to delete was found in a leaf node */
+			active.elements = append(active.elements[:i], active.elements[i+1:]...)
+			fmt.Println(active.elements)
+
+			if active == btree.root {
+				fmt.Println("Deleted element was found in the root node.")
+				return btree
+			}
+
+		checkunderflow:
+			fmt.Printf("active is %d-th/rd child of its parent\n", childNumber)
+			if len(active.elements) < btree.order {
+				fmt.Println("Underflow in the node due to the deletion")
+				/* Underflow in the leaf node */
+				var neighbor *bTreeNode
+				var allElements []int
+
+				/* If active is the first child, then the
+				 * neighbor will be the second child. Otherwise,
+				 * the left neighbor of active is chosen */
+				if childNumber == 0 {
+					/* The first child will always have a
+					 * right neighbor */
+					neighbor = active.parent.children[1]
+					allElements = append(allElements, active.elements...)
+					allElements = append(allElements, active.parent.elements[0])
+					allElements = append(allElements, neighbor.elements...)
+
+					/* Here after consider 1st node as the
+					 * active and 0th node as the neighbor.
+					 * This is a hack to avoid repeating a
+					 * lot of code below inside this section
+					 * */
+					active, neighbor = neighbor, active
+					childNumber = 1
+				} else {
+					/* Except for the first child, all the
+					 * other children will always have a left
+					 * neighbor */
+					neighbor = active.parent.children[childNumber-1]
+					allElements = append(allElements, neighbor.elements...)
+					allElements = append(allElements, active.parent.elements[childNumber-1])
+					allElements = append(allElements, active.elements...)
+				}
+
+				//fmt.Print("Number of elements in the neighbor is : ")
+				//fmt.Println(len(neighbor.elements))
+
+				fmt.Println(allElements)
+
+				if len(allElements) > 2*btree.order {
+					fmt.Println("Balancing the tree by shuffling the elements between the neighbors and changing the parent element")
+					midpos := len(allElements) / 2
+					active.parent.elements[childNumber-1] = allElements[midpos]
+					neighbor.elements = allElements[:midpos]
+					active.elements = allElements[midpos+1:]
+					return btree
+				} else { //assert len(allElements) == 2*btree.order
+
+					/* merge of the neighbors into a single
+					 * node (neighbor) and addressing the gap in the
+					 * parent node */
+
+					neighbor.elements = allElements
+					neighbor.children = append(neighbor.children, active.children...)
+
+					/* move all elements from (childNumber-1) one step forward */
+					copy(active.parent.elements[childNumber-1:], active.parent.elements[childNumber:])
+					active.parent.elements = active.parent.elements[:len(active.parent.elements)-1]
+
+					if len(active.parent.children) > childNumber {
+						/* move all links one step forward to remove the
+						 * reference to the active node as it has been merged
+						 * with its neighbor */
+						copy(active.parent.children[childNumber:], active.parent.children[childNumber+1:])
+						active.parent.children = active.parent.children[:len(active.parent.children)-1]
+					} else if len(active.parent.children) == childNumber {
+						/* Remove the last child */
+						active.parent.children = active.parent.children[:childNumber-1]
+					}
+
+					if active.parent.parent == nil {
+						btree.root = neighbor
+						return btree
+					}
+					active = active.parent
+					childNumber = findPositionInParentNode(active)
+					goto checkunderflow
+				}
+			}
+		}
+	} else {
+		fmt.Printf("Element [%d] not found in the btree\n", x)
+	}
+
 	return btree
 }
 
@@ -287,6 +432,7 @@ func treeOperations(w http.ResponseWriter, r *http.Request) {
 		} else if r.Form["delete"] != nil {
 
 			fmt.Printf("\nDeleting [%d]\n", v)
+			btree = Delete(btree, v)
 
 		} else {
 			io.WriteString(w, "Neither an insert request, nor a delete request")
@@ -306,13 +452,20 @@ func treeOperations(w http.ResponseWriter, r *http.Request) {
 		 * during the response of the POST (the above block) */
 		if btree == nil {
 			btree, _ = InitializebTree(3)
+			fmt.Println("Initializing the btree")
+
+			for _, v := range []int{6, 1, 3, 10, 4, 7, 8, 9, 18, 12, 13,
+				19, 15, 22, 33, 35, 44, 70, 37, 38, 39, 50, 60, 55, 80,
+				90, 101, 102, 100, 110, 120, 57, 58} {
+				btree = Insert(btree, v)
+			}
+			dotOutput := PrintbTree(btree)
 			err :=
-				template.Must(template.ParseFiles("treedisplay.html")).Execute(w, &treeRenderer{""})
+				template.Must(template.ParseFiles("treedisplay.html")).Execute(w, &treeRenderer{dotOutput})
 			if err != nil {
 				io.WriteString(w, fmt.Sprintf("Error generating HTML file from the template:\n%s", err))
 				return
 			}
-			fmt.Println("Initializing the btree")
 		}
 	}
 }
