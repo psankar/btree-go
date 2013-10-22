@@ -5,8 +5,12 @@
 			document.body.innerHTML = Viz("{{.DotOutput}}", "svg");
 		</script>
 		</br>
+		</br>
+		<hr>
+		</br>
 		<form method=post>
-			Enter the new number to insert: <input type=text
+			<textarea name=numbers rows=10 cols=140>{{.Elements}}</textarea></br>
+			Number to insert/delete: <input type=text
 			name=number> <input type=submit value="Insert" name=insert> <input type=submit value="Delete" name="delete"></br>
 			Sample Input: {6, 1, 3, 10, 4, 7, 8, 9, 18, 12, 13, 19,
 			15, 22, 33, 35, 44, 70, 37, 38, 39, 50, 60, 55, 80, 90,

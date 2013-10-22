@@ -212,35 +212,61 @@ func counter(ch, quit chan int) {
 	}
 }
 
-func PrintbTree(btree *bTree) string {
+func PrintbTree(btree *bTree, dumpStringPrefix string) *treeRenderer {
+	var renderer treeRenderer
+
 	ch := make(chan int)
 	quit := make(chan int)
 	go counter(ch, quit)
 
-	dotOutput := ""
+	outputString := ""
 
-	dotOutput += ("graph btree {\nrankdir = BT;\nedge[dir=back];\nNode0 [label=\"")
+	outputString += ("graph btree {\nrankdir = BT;\nedge[dir=back];\nNode0 [label=\"")
 	for _, el := range btree.root.elements {
-		dotOutput += fmt.Sprintf("%d  ", el)
+		outputString += fmt.Sprintf("%d  ", el)
 	}
-	dotOutput += ("\"]\n")
-	printbTreeNodes(btree.root, ch, <-ch, &dotOutput)
-	dotOutput += ("}\n")
+	outputString += ("\"]\n")
+	generateDotNotationForBTree(btree.root, ch, <-ch, &outputString)
+	outputString += ("}\n")
 	quit <- 1
 
-	return dotOutput
+	//go counter(ch, quit)
+	renderer.DotOutput = outputString
+	outputString = dumpStringPrefix + "\n"
+	generateTextDumpOfBTree(btree.root, &outputString)
+	renderer.Elements = outputString
+	//quit <- 1
+
+	return &renderer
 }
 
-func printbTreeNodes(active *bTreeNode, ch chan int, parentNodeNum int, dotOutput *string) {
+func generateDotNotationForBTree(active *bTreeNode, ch chan int, parentNodeNum int, outputString *string) {
 	for _, child := range active.children {
 		nodeNum := <-ch
-		*dotOutput += fmt.Sprintf("Node%d [shape=box label=\"", nodeNum)
+
+		*outputString += fmt.Sprintf("Node%d [shape=box label=\"", nodeNum)
 		for _, el := range child.elements {
-			*dotOutput += fmt.Sprintf("   %d", el)
+			*outputString += fmt.Sprintf("   %d", el)
 		}
-		*dotOutput += fmt.Sprintf("\"]\n")
-		printbTreeNodes(child, ch, nodeNum, dotOutput)
-		*dotOutput += fmt.Sprintf("Node%d -- Node%d [color=blue]\n", nodeNum, parentNodeNum)
+		*outputString += fmt.Sprintf("\"]\n")
+		generateDotNotationForBTree(child, ch, nodeNum, outputString)
+		*outputString += fmt.Sprintf("Node%d -- Node%d [color=blue]\n", nodeNum, parentNodeNum)
+	}
+}
+
+func generateTextDumpOfBTree(active *bTreeNode, outputString *string) {
+
+	for i, v := range active.elements {
+		if i < len(active.children) {
+			generateTextDumpOfBTree(active.children[i], outputString)
+		}
+		/* change the below %03d if your input numbers will be more than
+		 * 3 digits */
+		*outputString += fmt.Sprintf("%03d ", v)
+	}
+
+	if len(active.children) > len(active.elements) {
+		generateTextDumpOfBTree(active.children[len(active.children)-1], outputString)
 	}
 }
 
@@ -416,6 +442,7 @@ func main() {
 
 type treeRenderer struct {
 	DotOutput string
+	Elements  string
 }
 
 func treeOperations(w http.ResponseWriter, r *http.Request) {
@@ -447,9 +474,10 @@ func treeOperations(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		dotOutput := PrintbTree(btree)
+		renderer := PrintbTree(btree, r.Form["numbers"][0])
 
-		err = template.Must(template.ParseFiles("treedisplay.html")).Execute(w, &treeRenderer{dotOutput})
+		err =
+			template.Must(template.ParseFiles("treedisplay.html")).Execute(w, &renderer)
 		if err != nil {
 			io.WriteString(w, fmt.Sprintf("Error generating HTML file from the template:\n%s", err))
 			return
@@ -467,9 +495,9 @@ func treeOperations(w http.ResponseWriter, r *http.Request) {
 				90, 101, 102, 100, 110, 120, 57, 58} {
 				btree = Insert(btree, v)
 			}
-			dotOutput := PrintbTree(btree)
+			renderer := PrintbTree(btree, "")
 			err :=
-				template.Must(template.ParseFiles("treedisplay.html")).Execute(w, &treeRenderer{dotOutput})
+				template.Must(template.ParseFiles("treedisplay.html")).Execute(w, &renderer)
 			if err != nil {
 				io.WriteString(w, fmt.Sprintf("Error generating HTML file from the template:\n%s", err))
 				return
