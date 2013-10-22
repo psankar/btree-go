@@ -310,6 +310,7 @@ a:
 			}
 
 		checkunderflow:
+
 			fmt.Printf("active is %d-th/rd child of its parent\n", childNumber)
 			if len(active.elements) < btree.order {
 				fmt.Println("Underflow in the node due to the deletion")
@@ -365,6 +366,9 @@ a:
 
 					neighbor.elements = allElements
 					neighbor.children = append(neighbor.children, active.children...)
+					for _, child := range active.children {
+						child.parent = neighbor
+					}
 
 					/* move all elements from (childNumber-1) one step forward */
 					copy(active.parent.elements[childNumber-1:], active.parent.elements[childNumber:])
@@ -381,12 +385,16 @@ a:
 						active.parent.children = active.parent.children[:childNumber-1]
 					}
 
-					if active.parent.parent == nil {
+					if active.parent.parent == nil && len(active.parent.children) == 1 && len(active.parent.elements) == 0 {
+						fmt.Println("Reached the case where all the elements in the tree were moved to one node")
+						neighbor.parent = nil
 						btree.root = neighbor
 						return btree
 					}
+
 					active = active.parent
 					childNumber = findPositionInParentNode(active)
+
 					goto checkunderflow
 				}
 			}
