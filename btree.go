@@ -325,104 +325,132 @@ a:
 		childNumber = findPositionInParentNode(active)
 
 		fmt.Println("Length of the children of the found node is: ", len(active.children))
-		if len(active.children) == 0 {
-			/* The element to delete was found in a leaf node */
-			active.elements = append(active.elements[:i], active.elements[i+1:]...)
-			fmt.Println(active.elements)
 
-			if active == btree.root {
-				fmt.Println("Deleted element was found in the root node.")
-				return btree
+		if len(active.children) != 0 {
+			/* non-leaf node */
+
+			//assert len(active.children) == len(active.elements)+1 for
+			//all non-leaf, non-root nodes
+
+			fmt.Println(active.elements[i])
+			fmt.Println(active.children[i+1])
+
+			/* nextBigElement is assigned to the right child and ... */
+			nextBigElement := active.children[i+1]
+
+			/* The following assignment takes care of the case when
+			 * the next biggest element is the immediate right child
+			 * i.e., the immediate right child is a leaf node */
+			childNumber = i + 1
+
+			/* ... iterated until the leaf node is reached and ... */
+			for len(nextBigElement.children) != 0 && nextBigElement.children[0] != nil {
+				nextBigElement = nextBigElement.children[0]
+				childNumber = 0
 			}
 
-		checkunderflow:
+			/* ... the next big element is calculated */
+			active.elements[i] = nextBigElement.elements[0]
+			active = nextBigElement
+			i = 0
+		}
 
-			fmt.Printf("active is %d-th/rd child of its parent\n", childNumber)
-			if len(active.elements) < btree.order {
-				fmt.Println("Underflow in the node due to the deletion")
-				/* Underflow in the leaf node */
-				var neighbor *bTreeNode
-				var allElements []int
+		/* The element to delete was found in a leaf node */
+		active.elements = append(active.elements[:i], active.elements[i+1:]...)
+		fmt.Println(active.elements)
 
-				/* If active is the first child, then the
-				 * neighbor will be the second child. Otherwise,
-				 * the left neighbor of active is chosen */
-				if childNumber == 0 {
-					/* The first child will always have a
-					 * right neighbor */
-					neighbor = active.parent.children[1]
-					allElements = append(allElements, active.elements...)
-					allElements = append(allElements, active.parent.elements[0])
-					allElements = append(allElements, neighbor.elements...)
+		if active == btree.root {
+			fmt.Println("Deleted element was found in the root node.")
+			return btree
+		}
 
-					/* Here after consider 1st node as the
-					 * active and 0th node as the neighbor.
-					 * This is a hack to avoid repeating a
-					 * lot of code below inside this section
-					 * */
-					active, neighbor = neighbor, active
-					childNumber = 1
-				} else {
-					/* Except for the first child, all the
-					 * other children will always have a left
-					 * neighbor */
-					neighbor = active.parent.children[childNumber-1]
-					allElements = append(allElements, neighbor.elements...)
-					allElements = append(allElements, active.parent.elements[childNumber-1])
-					allElements = append(allElements, active.elements...)
+	checkunderflow:
+
+		fmt.Printf("active is %d-th/rd child of its parent\n", childNumber)
+		if len(active.elements) < btree.order {
+			fmt.Println("Underflow in the node due to the deletion")
+			/* Underflow in the leaf node */
+			var neighbor *bTreeNode
+			var allElements []int
+
+			/* If active is the first child, then the
+			 * neighbor will be the second child. Otherwise,
+			 * the left neighbor of active is chosen */
+			if childNumber == 0 {
+				/* The first child will always have a
+				 * right neighbor */
+				neighbor = active.parent.children[1]
+				allElements = append(allElements, active.elements...)
+				allElements = append(allElements, active.parent.elements[0])
+				allElements = append(allElements, neighbor.elements...)
+
+				/* Here after consider 1st node as the
+				 * active and 0th node as the neighbor.
+				 * This is a hack to avoid repeating a
+				 * lot of code below inside this section
+				 * */
+				active, neighbor = neighbor, active
+				childNumber = 1
+			} else {
+				/* Except for the first child, all the
+				 * other children will always have a left
+				 * neighbor */
+				neighbor = active.parent.children[childNumber-1]
+				allElements = append(allElements, neighbor.elements...)
+				allElements = append(allElements, active.parent.elements[childNumber-1])
+				allElements = append(allElements, active.elements...)
+			}
+
+			//fmt.Print("Number of elements in the neighbor is : ")
+			//fmt.Println(len(neighbor.elements))
+
+			fmt.Println(allElements)
+
+			if len(allElements) > 2*btree.order {
+				fmt.Println("Balancing the tree by shuffling the elements between the neighbors and changing the parent element")
+				midpos := len(allElements) / 2
+				active.parent.elements[childNumber-1] = allElements[midpos]
+				neighbor.elements = allElements[:midpos]
+				active.elements = allElements[midpos+1:]
+				return btree
+			} else { //assert len(allElements) == 2*btree.order
+
+				/* merge of the neighbors into a single
+				 * node (neighbor) and addressing the gap in the
+				 * parent node */
+
+				neighbor.elements = allElements
+				neighbor.children = append(neighbor.children, active.children...)
+				for _, child := range active.children {
+					child.parent = neighbor
 				}
 
-				//fmt.Print("Number of elements in the neighbor is : ")
-				//fmt.Println(len(neighbor.elements))
+				/* move all elements from (childNumber-1) one step forward */
+				copy(active.parent.elements[childNumber-1:], active.parent.elements[childNumber:])
+				active.parent.elements = active.parent.elements[:len(active.parent.elements)-1]
 
-				fmt.Println(allElements)
+				if len(active.parent.children) > childNumber {
+					/* move all links one step forward to remove the
+					 * reference to the active node as it has been merged
+					 * with its neighbor */
+					copy(active.parent.children[childNumber:], active.parent.children[childNumber+1:])
+					active.parent.children = active.parent.children[:len(active.parent.children)-1]
+				} else if len(active.parent.children) == childNumber {
+					/* Remove the last child */
+					active.parent.children = active.parent.children[:childNumber-1]
+				}
 
-				if len(allElements) > 2*btree.order {
-					fmt.Println("Balancing the tree by shuffling the elements between the neighbors and changing the parent element")
-					midpos := len(allElements) / 2
-					active.parent.elements[childNumber-1] = allElements[midpos]
-					neighbor.elements = allElements[:midpos]
-					active.elements = allElements[midpos+1:]
+				if active.parent.parent == nil && len(active.parent.children) == 1 && len(active.parent.elements) == 0 {
+					fmt.Println("Reached the case where all the elements in the tree were moved to one node")
+					neighbor.parent = nil
+					btree.root = neighbor
 					return btree
-				} else { //assert len(allElements) == 2*btree.order
-
-					/* merge of the neighbors into a single
-					 * node (neighbor) and addressing the gap in the
-					 * parent node */
-
-					neighbor.elements = allElements
-					neighbor.children = append(neighbor.children, active.children...)
-					for _, child := range active.children {
-						child.parent = neighbor
-					}
-
-					/* move all elements from (childNumber-1) one step forward */
-					copy(active.parent.elements[childNumber-1:], active.parent.elements[childNumber:])
-					active.parent.elements = active.parent.elements[:len(active.parent.elements)-1]
-
-					if len(active.parent.children) > childNumber {
-						/* move all links one step forward to remove the
-						 * reference to the active node as it has been merged
-						 * with its neighbor */
-						copy(active.parent.children[childNumber:], active.parent.children[childNumber+1:])
-						active.parent.children = active.parent.children[:len(active.parent.children)-1]
-					} else if len(active.parent.children) == childNumber {
-						/* Remove the last child */
-						active.parent.children = active.parent.children[:childNumber-1]
-					}
-
-					if active.parent.parent == nil && len(active.parent.children) == 1 && len(active.parent.elements) == 0 {
-						fmt.Println("Reached the case where all the elements in the tree were moved to one node")
-						neighbor.parent = nil
-						btree.root = neighbor
-						return btree
-					}
-
-					active = active.parent
-					childNumber = findPositionInParentNode(active)
-
-					goto checkunderflow
 				}
+
+				active = active.parent
+				childNumber = findPositionInParentNode(active)
+
+				goto checkunderflow
 			}
 		}
 	} else {
