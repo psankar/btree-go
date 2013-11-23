@@ -9,18 +9,21 @@ etc.
 
 This Go program implements the original B Tree that was invented by Rudolf Bayer
 and Edward McCreight while in Boeing, and as documented by Douglas Comer in his
-seminal paper *The ubiquitous B Tree* [www.cs.aau.dk/~simas/aalg06/UbiquitBtree.pdf], which I personally believe that every
+seminal paper *The ubiquitous B Tree* [www.cs.aau.dk/~simas/aalg06/UbiquitBtree.pdf], which I personally believe what every
 programmer must read. To quote Donald Knuth, B Trees are the biggest
 contribution from Computer Science to Mathematics.
 
 I have implemented this Go program mainly as a teaching aid to cover the
-original version of the B Tree. On hindsight I believe that I should have
-implemented this in Javascript and contributed to the tree visualization
-project maintained by David Galles from the University of San Francisco [http://www.cs.usfca.edu/~galles/visualization/]
+original version of the B Tree. Most of the online visualization projects
+cover the Knuth variant and not the original version.  On hindsight, 
+I believe that I should have implemented this in Javascript and contributed 
+to the tree visualization project maintained by David Galles from
+the University of San Francisco [http://www.cs.usfca.edu/~galles/visualization/]
 
 #Usage
-go run btree.go
-Visit http://localhost:8080 and insert/delete numbers
+* Install go from http://golang.org
+* go run btree.go
+* Visit http://localhost:8080 and insert/delete numbers
 
 #Sources
 I have used go to maintain the BTree datastructure. I generate DoT markup files
